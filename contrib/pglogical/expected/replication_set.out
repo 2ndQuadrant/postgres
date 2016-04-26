@@ -54,6 +54,12 @@ SELECT * FROM pglogical.create_replication_set('repset_replicate_insupd', replic
               128878480
 (1 row)
 
+SELECT * FROM pglogical.create_replication_set('miq');
+ create_replication_set 
+------------------------
+             3063060354
+(1 row)
+
 -- add tables
 SELECT * FROM pglogical.replication_set_add_table('repset_replicate_all', 'test_publicschema');
  replication_set_add_table 
@@ -78,6 +84,23 @@ SELECT * FROM pglogical.replication_set_add_table('repset_replicate_insupd', '"s
 ---------------------------
  t
 (1 row)
+
+SELECT * FROM pglogical.replication_set_add_table('miq', 'test_publicschema');
+ replication_set_add_table 
+---------------------------
+ t
+(1 row)
+
+-- test join table contents
+SELECT * FROM pglogical.replication_set_table ORDER BY 1,2;
+   set_id   |               set_reloid               
+------------+----------------------------------------
+  128878480 | normalschema.test_normalschema
+  128878480 | "strange.schema-IS".test_strangeschema
+  348382733 | normalschema.test_normalschema
+ 1767380104 | test_publicschema
+ 3063060354 | test_publicschema
+(5 rows)
 
 -- should fail
 SELECT * FROM pglogical.replication_set_add_table('repset_replicate_all', 'test_unlogged');
@@ -119,9 +142,10 @@ SELECT * FROM pglogical.tables WHERE relname IN ('test_publicschema', 'test_norm
  normalschema      | test_normalschema  | repset_replicate_instrunc
  normalschema      | test_normalschema  | repset_replicate_insupd
  public            | test_nopkey        | repset_replicate_instrunc
+ public            | test_publicschema  | miq
  public            | test_publicschema  | repset_replicate_all
  strange.schema-IS | test_strangeschema | repset_replicate_insupd
-(5 rows)
+(6 rows)
 
 SELECT * FROM pglogical.replication_set_add_all_tables('default_insert_only', '{public}');
  replication_set_add_all_tables 
@@ -137,9 +161,10 @@ SELECT * FROM pglogical.tables WHERE relname IN ('test_publicschema', 'test_norm
  public            | test_nopkey        | default_insert_only
  public            | test_nopkey        | repset_replicate_instrunc
  public            | test_publicschema  | default_insert_only
+ public            | test_publicschema  | miq
  public            | test_publicschema  | repset_replicate_all
  strange.schema-IS | test_strangeschema | repset_replicate_insupd
-(7 rows)
+(8 rows)
 
 --too short
 SELECT pglogical.create_replication_set('');
@@ -151,7 +176,7 @@ SELECT pglogical.replicate_ddl_command($$
 	DROP SCHEMA "strange.schema-IS" CASCADE;
 	DROP TABLE public.test_nopkey CASCADE;
 $$);
-NOTICE:  drop cascades to 2 other objects
+NOTICE:  drop cascades to 3 other objects
 NOTICE:  drop cascades to table normalschema.test_normalschema
 NOTICE:  drop cascades to 2 other objects
 NOTICE:  drop cascades to table "strange.schema-IS".test_strangeschema
