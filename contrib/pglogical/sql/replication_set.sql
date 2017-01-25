@@ -27,11 +27,18 @@ SELECT * FROM pglogical.create_replication_set('repset_replicate_all');
 SELECT * FROM pglogical.create_replication_set('repset_replicate_instrunc', replicate_update := false, replicate_delete := false);
 SELECT * FROM pglogical.create_replication_set('repset_replicate_insupd', replicate_delete := false, replicate_truncate := false);
 
+SELECT * FROM pglogical.create_replication_set('miq');
+
 -- add tables
 SELECT * FROM pglogical.replication_set_add_table('repset_replicate_all', 'test_publicschema');
 SELECT * FROM pglogical.replication_set_add_table('repset_replicate_instrunc', 'normalschema.test_normalschema');
 SELECT * FROM pglogical.replication_set_add_table('repset_replicate_insupd', 'normalschema.test_normalschema');
 SELECT * FROM pglogical.replication_set_add_table('repset_replicate_insupd', '"strange.schema-IS".test_strangeschema');
+
+SELECT * FROM pglogical.replication_set_add_table('miq', 'test_publicschema');
+
+-- test join table contents
+SELECT * FROM pglogical.replication_set_table ORDER BY 1,2;
 
 -- should fail
 SELECT * FROM pglogical.replication_set_add_table('repset_replicate_all', 'test_unlogged');
