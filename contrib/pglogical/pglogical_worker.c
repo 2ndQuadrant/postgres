@@ -406,7 +406,7 @@ pglogical_worker_shmem_startup(void)
 
 	if (!found)
 	{
-		PGLogicalCtx->lock = LWLockAssign();
+		PGLogicalCtx->lock = &(GetNamedLWLockTranche("pglogical_workers"))->lock;
 		PGLogicalCtx->supervisor = NULL;
 		PGLogicalCtx->total_workers = max_worker_processes;
 		memset(PGLogicalCtx->workers, 0,
@@ -430,7 +430,7 @@ pglogical_worker_shmem_init(void)
 	 * tries to allocate or free blocks from this array at once.  There won't
 	 * be enough contention to make anything fancier worth doing.
 	 */
-	RequestAddinLWLocks(1);
+	RequestNamedLWLockTranche("pglogical_workers", 1);
 
 	/*
 	 * Whether this is a first startup or crash recovery, we'll be re-initing
