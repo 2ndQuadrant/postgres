@@ -48,7 +48,8 @@
 #   REGRESS -- list of regression test cases (without suffix)
 #   REGRESS_OPTS -- additional switches to pass to pg_regress
 #   NO_INSTALLCHECK -- don't define an installcheck target, useful e.g. if
-#     tests require special configuration, or don't use pg_regress
+#     tests require special configuration, or don't use pg_regress. Suppresses
+#     the 'check' rule too, since that usually just prints an info message.
 #   EXTRA_CLEAN -- extra files to remove in 'make clean'
 #   PG_CPPFLAGS -- will be prepended to CPPFLAGS
 #   PG_CFLAGS -- will be appended to CFLAGS
@@ -422,6 +423,7 @@ installcheck: submake $(REGRESS_PREP)
 	$(pg_regress_installcheck) $(REGRESS_OPTS) $(REGRESS)
 endif
 
+ifndef NO_INSTALLCHECK
 ifdef PGXS
 check:
 	@echo '"$(MAKE) check" is not supported.'
@@ -430,6 +432,8 @@ else
 check: submake $(REGRESS_PREP)
 	$(pg_regress_check) $(REGRESS_OPTS) $(REGRESS)
 endif
+endif # NO_INSTALLCHECK
+
 endif # REGRESS
 
 ifndef NO_TEMP_INSTALL

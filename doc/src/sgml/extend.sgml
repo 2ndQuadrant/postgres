@@ -1308,7 +1308,7 @@ include $(PGXS)
       <term><varname>NO_INSTALLCHECK</varname></term>
       <listitem>
        <para>
-        don't define an <literal>installcheck</literal> target, useful e.g. if tests require special configuration, or don't use <application>pg_regress</application>
+        don't define an <literal>installcheck</literal> or <literal>check</literal> target, useful e.g. if tests require special configuration, or don't use <application>pg_regress</application>
        </para>
       </listitem>
      </varlistentry>
