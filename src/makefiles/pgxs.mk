@@ -63,8 +63,23 @@
 #     to build against (typically just "pg_config" to use the first one in
 #     your PATH)
 #
-# Better look at some of the existing uses for examples...
+# Note that changing these variables (or any variables they reference) after
+# including PGXS generally has no effect as they are eagerly expanded at time
+# of inclusion. See the PGXS documentatation in the reference manual for
+# details.
+#
+# Look in contrib/ and out-of-tree extensions for examples.
 
+#
+# This Makefile is used for extensions that are built against an
+# already-installed PostgreSQL, in which case the variable PGXS is
+# always true.
+#
+# It's also used inside the PostgreSQL build tree to compile modules in
+# contrib/. In that case the build is happening within a PostgreSQL source
+# tree and needs some special cases. 3rd party extension authors may safely
+# ignore anything in NO_PGXS blocks.
+#
 ifndef PGXS
 ifndef NO_PGXS
 $(error pgxs error: makefile variable PGXS or NO_PGXS must be set)
@@ -78,9 +93,20 @@ endif
 
 ifdef PGXS
 
-
-# We assume that we are in src/makefiles/, so top is ...
+# For the purposes of PGXS, the top_srcdir and top_builddir both point to the
+# combined PostgreSQL source/build tree skeleton that was installed into
+# $(pgxsdir) by PostgreSQL's "make install", usually somewhere like
+# ${installprefix}/lib/postgresql/pgxs/ . See src/makefiles/Makefile. That
+# means top_builddir has nothing to do with the extension's build directory
+# at all.
+#
+# We assume that pgxs.mk is in src/makefiles/, so the top of this fake
+# postgres tree is two levels up.
+#
 top_builddir := $(dir $(PGXS))../..
+
+# We can now load the core PostgreSQL build infrastructure from
+# the installed postgres tree, setting $(srcdir) etc.
 include $(top_builddir)/src/Makefile.global
 
 # These might be set in Makefile.global, but if they were not found

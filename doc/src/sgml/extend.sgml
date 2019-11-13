@@ -1432,6 +1432,145 @@ make VPATH=/path/to/extension/source/tree install
    </para>
 
    <para>
+    Variables defined in the extension <filename>Makefile</filename>, like
+    <literal>OBJS</literal>, are expanded immediately when the
+    <literal>include $(PGXS)</literal> line in the extension makefile is
+    processed. <emphasis>Changes made to these PGXS variables after PGXS is included
+    will generally have no effect</emphasis>. The same is true of lazy variables
+    they reference. Conversely, makefile variables like
+    <literal>$(srcdir)</literal> and <literal>$(VERSION_NUM)</literal> that are defined
+    by PGXS and the PostgreSQL makefiles it includes will not have values
+    until <emphasis>after</emphasis> PGXS is included. They'll evaluate
+    to an empty string in eager assignments like <literal>:=</literal> or
+    <literal>?=</literal> and in Make function calls like
+    <literal>$(shell ...)</literal>. So code like this looks sensible, but
+    <emphasis>will not work</emphasis>:
+<programlisting>
+# ... rest of extension ...
+OBJS = my_extension.o
+
+# WARNING EXAMPLE OF INCORRECT CODE
+ifeq ($(MAJORVERSION),11)
+OBJS += autopartition_support.o
+$(error this will never be evaluated)
+endif
+
+# This will never contain autopartition_support.o:
+$(info object list is: $(OBJS))
+
+PG_CONFIG ?= pg_config
+PGXS := $(shell $(PG_CONFIG) --pgxs)
+include $(PGXS)
+</programlisting>
+    Running <application>make</application> with <literal>--warn-unused-variables</literal> will
+    show that <literal>$(MAJORVERSION)</literal> was not defined at the time it was evaluated.
+    To work around this extensions may explicitly include <literal>Makefile.global</literal>
+    before <literal>PGXS</literal> does so for them:
+<programlisting>
+PG_CONFIG ?= pg_config
+PGXS := $(shell $(PG_CONFIG) --pgxs)
+
+# Error out eagerly to prevent confusing errors later
+$(if $(PGXS),,$(error $(PG_CONFIG) --pgxs failed, check that pg_config is on your PATH))
+
+# These two settings are only needed on back-versions
+# but should be included for backwards-compatibility:
+NO_GENERATED_HEADERS=yes
+NO_TEMP_INSTALL=yes
+
+# Make PostgreSQL build variables available for use before
+# PGXS variables are expanded:
+include $(dir $(PGXS))/../Makefile.global
+
+# ... rest of extension ...
+OBJS = my_extension.o
+
+ifeq ($(MAJORVERSION),11)
+OBJS += autopartition_support.o
+endif
+
+$(info object list is: $(OBJS))
+
+include $(PGXS)
+</programlisting>
+   </para>
+
+   <para>
+    Useful variables available from <filename>Makefile.global</filename> include:
+
+    <variablelist>
+
+     <varlistentry>
+      <term><varname>srcdir</varname></term>
+      <listitem>
+       <para>
+        Directory containing the extension Makefile and sources, which may not be
+        the same as the <literal>$(CURDIR)</literal> when doing vpath-like
+        builds.
+       </para>
+      </listitem>
+     </varlistentry>
+
+     <varlistentry>
+      <term><varname>VERSION</varname></term>
+      <listitem>
+       <para>
+        PostgreSQL version as a string
+       </para>
+      </listitem>
+     </varlistentry>
+
+     <varlistentry>
+      <term><varname>VERSION_NUM</varname></term>
+      <listitem>
+       <para>
+        PostgreSQL version as a number, in the same form as
+        <xref linkend="guc-server-version-num"/>
+        or the C-level macro <literal>PG_VERSION_NUM</literal>.
+       </para>
+      </listitem>
+     </varlistentry>
+
+     <varlistentry>
+      <term><varname>MAJORVERSION</varname></term>
+      <listitem>
+       <para>
+        PostgreSQL major version as a decimal, e.g. <literal>11</literal>
+        or <literal>9.6</literal>.
+       </para>
+      </listitem>
+     </varlistentry>
+
+     <varlistentry>
+      <term><varname>with_<replaceable>feature</replaceable></varname></term>
+      <term><varname>enable_<replaceable>feature</replaceable></varname></term>
+      <listitem>
+       <para>
+        configure-detected feature flags
+       </para>
+      </listitem>
+     </varlistentry>
+
+     <varlistentry>
+      <term><varname>top_builddir</varname></term>
+      <term><varname>top_srcdir</varname></term>
+      <listitem>
+       <para>
+        Points to the subdirectory of the PostgreSQL install directory that
+        contains <filename>src/makefiles/pgxs.mk</filename>, usually
+        <replaceable>installprefix</replaceable><literal>/lib/postgresql/pgxs/</literal>.
+        This is <emphasis>not</emphasis> the extension source or build directory.
+       </para>
+      </listitem>
+     </varlistentry>
+
+    </variablelist>
+    Many other useful variables are available. There is no formal set of supported
+    and stable variables so extension authors must be prepared for the need to deal with
+    version specific differences including future incompatible changes.
+   </para>
+
+   <para>
     The scripts listed in the <varname>REGRESS</varname> variable are used for
     regression testing of your module, which can be invoked by <literal>make
     installcheck</literal> after doing <literal>make install</literal>.  For this to

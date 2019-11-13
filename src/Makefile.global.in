@@ -12,6 +12,55 @@
 # the relative path from the top to itself and `top_builddir' to the relative
 # path from itself to the top before including this file. (The "top" is the
 # parent directory of the directory this file is in.)
+#
+# This Makefile is used for the main PostgreSQL build, contribs, and everything
+# else.
+#
+# It's also installed along with the build products so that it can be used by
+# PGXS (see src/makefiles/pgxs.mk and doc/src/sgml/extend.sgml) to build 3rd
+# party extensions. The variable PGXS will be defined for such extension
+# builds, and only then.
+#
+# The following variables must be set before including Makefile.global:
+#
+#   top_builddir:
+#      The relative path from the directory containing the including Makefile
+#      to the root of the source tree, or an absolute path to the root of the
+#      source tree. $(top_builddir)/src/Makefile.global must always find
+#      Makefile.global where it was templated into the build tree.
+#
+#      For example if subdir = contrib/adminpack then top_builddir = ../.. .
+#
+#      In PGXS builds top_builddir is somewhat of a misnomer; Makefile.global
+#      is in the installed PostgreSQL tree, not the builddir, so top_builddir
+#      points there and has nothing to do with the extension build tree.
+#
+#    subdir:
+#      Relative path from the root of the PostgreSQL source tree to the
+#      directory containing the Makefile that included Makefile.global.  For
+#      example, contrib/adminpack/Makefile sets subdir = contrib/adminpack .
+#
+#      Not used or required for PGXS builds.
+#
+# Important variables defined by Makefile.global include:
+#
+#   srcdir:
+#     Path (usually relative) to directory containing Makefile that included
+#     Makefile.global. This is where the currently-being-built sources of a
+#     recursive Make step are.
+#
+#   top_srcdir:
+#     For normal non-PGXS builds this points to the top PostgreSQL source code
+#     directory (where 'configure' etc live), i.e. $(srcdir)/$(top_builddir).
+#
+#     For PGXS builds there's no true PostgreSQL source tree is available, so
+#     this points to a slim copy of the source directory tree that's installed
+#     to ${PREFIX}/lib/postgresql/pgxs/ to support PGXS builds, meaning it's
+#     always the same as $(top_builddir) for PGXS. So $(top_srcdir) has nothing
+#     to do with the extension's source tree.
+#
+# Build products are found relative to $(CURDIR).
+#
 #------------------------------------------------------------------------------
 
 ifndef included_makefile_global
@@ -43,36 +92,62 @@ VERSION = @PACKAGE_VERSION@
 MAJORVERSION = @PG_MAJORVERSION@
 VERSION_NUM = @PG_VERSION_NUM@
 
+# Sanity check that we were included sanely.
+ifeq ($(top_builddir),)
+ $(info Makefiles loaded are $(MAKEFILE_LIST))
+ $(error required variable top_builddir was not set before including Makefile.global)
+endif
+ifneq ($(notdir $(realpath $(top_builddir)/src/Makefile.global)),Makefile.global)
+ $(warning top_builddir does not find src/Makefile.global)
+endif
+
 # Set top_srcdir, srcdir, and VPATH.
 ifdef PGXS
-top_srcdir = $(top_builddir)
-
-# If VPATH is set or Makefile is not in current directory we are building
-# the extension with VPATH so we set the variable here.
-ifdef VPATH
-srcdir = $(VPATH)
-else
-ifeq ($(CURDIR),$(dir $(firstword $(MAKEFILE_LIST))))
-srcdir = .
-VPATH =
-else
-srcdir = $(dir $(firstword $(MAKEFILE_LIST)))
-VPATH = $(srcdir)
-endif
-endif
+ # top_srcdir locates the sources for PostgreSQL proper, not the extension
+ # sources.
+ top_srcdir = $(top_builddir)
+ ifdef VPATH
+  # Explicit VPATH. Assume VPATH contains only the source directory.
+  srcdir = $(VPATH)
+ else
+  ifeq ($(CURDIR),$(dir $(firstword $(MAKEFILE_LIST))))
+   # Building directly inside the source tree
+   srcdir = .
+  else
+   # Invoked with "make -f" from CWD builddir. Top source directory is
+   # co-located with the first Makefile (not Makefile.global) and required
+   # files may be located using vpath pattern directives.
+   #
+   # This will break if the user set MAKEFILES to pre-include extra files, or
+   # if the path to the first Makefile contains spaces.
+   #
+   srcdir = $(dir $(firstword $(MAKEFILE_LIST)))
+  endif
+ endif
+ # PGXS shouldn't be referencing $(subdir) since it doesn't make sense here;
+ # notice if it does and generate a warning.
+ subdir = $(warning PGXS build tried to use variable "subdir")
 else # not PGXS
-vpath_build = @vpath_build@
-abs_top_builddir = @abs_top_builddir@
-abs_top_srcdir = @abs_top_srcdir@
-
-ifneq ($(vpath_build),yes)
-top_srcdir = $(top_builddir)
-srcdir = .
-else # vpath_build = yes
-top_srcdir = $(abs_top_srcdir)
-srcdir = $(top_srcdir)/$(subdir)
-VPATH = $(srcdir)
-endif
+ ifndef subdir
+  $(info Makefiles loaded are $(MAKEFILE_LIST))
+  $(error required variable subdir was not set before including Makefile.global)
+ endif
+ # vpath builds of PostgreSQL proper are set up at 'configure' time, not
+ # when 'make' in invoked, by running 'configure' from a separate build directory:
+ #
+ #    mkdir pgbuild && cd pgbuild && ../postgres/configure
+ #
+ # The configure script substitutes path information here:
+ vpath_build = @vpath_build@
+ abs_top_builddir = @abs_top_builddir@
+ abs_top_srcdir = @abs_top_srcdir@
+ ifneq ($(vpath_build),yes)
+  top_srcdir = $(top_builddir)
+  srcdir = .
+ else # vpath_build = yes
+  top_srcdir = $(abs_top_srcdir)
+  srcdir = $(top_srcdir)/$(subdir)
+ endif
 endif # not PGXS
 
 vpathsearch = `for f in $(addsuffix /$(1),$(subst :, ,. $(VPATH))); do test -r $$f && echo $$f && break; done`
