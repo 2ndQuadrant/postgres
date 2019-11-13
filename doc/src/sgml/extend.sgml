@@ -1050,7 +1050,7 @@ relocatable = false
 EXTENSION = pair
 DATA = pair--1.0.sql
 
-PG_CONFIG = pg_config
+PG_CONFIG ?= pg_config
 PGXS := $(shell $(PG_CONFIG) --pgxs)
 include $(PGXS)
 </programlisting>
@@ -1110,8 +1110,9 @@ DATA = isbn_issn--1.0.sql
 DOCS = README.isbn_issn
 HEADERS_isbn_issn = isbn_issn.h
 
-PG_CONFIG = pg_config
+PG_CONFIG ?= pg_config
 PGXS := $(shell $(PG_CONFIG) --pgxs)
+$(if $(PGXS),,$(error $(PG_CONFIG) --pgxs failed, check that pg_config is on your PATH))
 include $(PGXS)
 </programlisting>
     The last three lines should always be the same.  Earlier in the
