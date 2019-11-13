@@ -69,15 +69,15 @@ ifndef PGXS
 ifndef NO_PGXS
 $(error pgxs error: makefile variable PGXS or NO_PGXS must be set)
 endif
+else # PGXS
+ifdef NO_PGXS
+$(error pgxs error: makefile variables PGXS and NO_PGXS are mutually exclusive)
+endif
 endif
 
 
 ifdef PGXS
 
-# External extensions must assume generated headers are available
-NO_GENERATED_HEADERS=yes
-# The temp-install rule won't work, either
-NO_TEMP_INSTALL=yes
 
 # We assume that we are in src/makefiles/, so top is ...
 top_builddir := $(dir $(PGXS))../..
@@ -413,7 +413,7 @@ endif # VPATH
 
 .PHONY: submake
 submake:
-ifndef PGXS
+ifdef NO_PGXS
 	$(MAKE) -C $(top_builddir)/src/test/regress pg_regress$(X)
 endif
 
