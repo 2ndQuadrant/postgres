@@ -26,7 +26,8 @@
 #
 # The following variables can also be set:
 #
-#   EXTENSION -- name of extension (there must be a $EXTENSION.control file)
+#   EXTENSION -- name of extension (there must be a $EXTENSION.control file
+#     or a target to make one).
 #   MODULEDIR -- subdirectory of $PREFIX/share into which DATA and DOCS files
 #     should be installed (if not set, default is "extension" if EXTENSION
 #     is set, or "contrib" if not)
@@ -207,8 +208,9 @@ endef
 
 # end of HEADERS_* stuff
 
+EXTENSION_CONTROL_FILE := $(addsuffix .control,$(EXTENSION))
 
-all: $(PROGRAM) $(DATA_built) $(HEADER_allbuilt) $(SCRIPTS_built) $(addsuffix $(DLSUFFIX), $(MODULES)) $(addsuffix .control, $(EXTENSION))
+all: $(PROGRAM) $(DATA_built) $(HEADER_allbuilt) $(SCRIPTS_built) $(addsuffix $(DLSUFFIX), $(MODULES)) $(EXTENSION_CONTROL_FILE)
 
 ifeq ($(with_llvm), yes)
 all: $(addsuffix .bc, $(MODULES)) $(patsubst %.o,%.bc, $(OBJS))
@@ -223,11 +225,24 @@ include $(top_srcdir)/src/Makefile.shlib
 all: all-lib
 endif # MODULE_big
 
+# Use a separate target for installing the control file so we can do vpath
+# dependency resolution. 'make' doesn't seem to have any function to search the
+# vpath directive list for a file. The search is done implicitly on the
+# dependency list then the resolved path is available in $< .
+#
+# (We don't have to do this for most of the other file types because we expect
+# the user to explicitly declare them as DATA or DATA_built, etc, so we know
+# where to look.)
+#
+ifdef EXTENSION
+vpath $(EXTENSION).control $(srcdir)/
+install_control_file: $(EXTENSION_CONTROL_FILE) installdirs
+	$(INSTALL_DATA) $< '$(DESTDIR)$(datadir)/extension/'
+else
+install_control_file: ;
+endif
 
-install: all installdirs
-ifneq (,$(EXTENSION))
-	$(INSTALL_DATA) $(addprefix $(srcdir)/, $(addsuffix .control, $(EXTENSION))) '$(DESTDIR)$(datadir)/extension/'
-endif # EXTENSION
+install: all installdirs install_control_file
 ifneq (,$(DATA)$(DATA_built))
 	$(INSTALL_DATA) $(addprefix $(srcdir)/, $(DATA)) $(DATA_built) '$(DESTDIR)$(datadir)/$(datamoduledir)/'
 endif # DATA
@@ -295,7 +310,7 @@ endif # MODULE_big
 
 uninstall:
 ifneq (,$(EXTENSION))
-	rm -f $(addprefix '$(DESTDIR)$(datadir)/extension'/, $(notdir $(addsuffix .control, $(EXTENSION))))
+	rm -f $(addprefix '$(DESTDIR)$(datadir)/extension'/, $(notdir $(EXTENSION_CONTROL_FILE)))
 endif
 ifneq (,$(DATA)$(DATA_built))
 	rm -f $(addprefix '$(DESTDIR)$(datadir)/$(datamoduledir)'/, $(notdir $(DATA) $(DATA_built)))
