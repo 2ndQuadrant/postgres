@@ -450,9 +450,16 @@ endif
 
 # Installation.
 
+use_install_sh ?=
 install_bin = @install_bin@
 install_sh = $(SHELL) $(top_srcdir)/config/install-sh -c
 INSTALL = $(if $(use_install_sh),$(install_sh),$(if $(install_bin),$(install_bin),$(install_sh)))
+
+# Silence unused variable warnings for optional settings
+INSTALL_PROGRAM_ENV ?=
+INSTALL_PROGRAM_ENV ?=
+INSTALL_SHLIB_ENV ?=
+INSTALL_STRIP_FLAG ?=
 
 INSTALL_SCRIPT_MODE	= 755
 INSTALL_DATA_MODE	= 644
@@ -599,6 +606,7 @@ submake-libpgfeutils: | submake-generated-headers
 #
 # Testing support
 
+USE_MODULE_DB ?=
 ifneq ($(USE_MODULE_DB),)
   PL_TESTDB = pl_regression_$(NAME)
   # Replace this with $(or ...) if we ever require GNU make 3.81.
@@ -672,6 +680,11 @@ pg_isolation_regress_installcheck = \
 # configure script, and leave the makefiles alone.
 
 -include $(top_srcdir)/src/Makefile.custom
+
+# These variables are rarely used and should not produce unused warnings.
+CUSTOM_CC ?=
+CUSTOM_COPT ?=
+CUSTOM_INSTALL ?=
 
 ifneq ($(CUSTOM_INSTALL),)
 INSTALL= $(CUSTOM_INSTALL)

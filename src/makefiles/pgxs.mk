@@ -130,6 +130,10 @@ ifdef PG_LDFLAGS
 override LDFLAGS := $(PG_LDFLAGS) $(LDFLAGS)
 endif
 
+# Set defaults for optional variables to help make --warn-undefined-variables
+# more useful.
+DESTDIR ?=
+
 # logic for HEADERS_* stuff
 
 # get list of all names used with or without built_ prefix

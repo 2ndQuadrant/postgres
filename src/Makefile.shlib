@@ -69,6 +69,12 @@
 COMPILER = $(CC) $(CFLAGS)
 LINK.static = $(AR) $(AROPT)
 
+# The argument variables are optional, so don't warn if they're absent
+SHLIB_LINK ?=
+SHLIB_LINK_INTERNAL ?=
+SHLIB_EXPORTS ?=
+SHLIB_PREREQS ?=
+
 LDFLAGS_INTERNAL += $(SHLIB_LINK_INTERNAL)
 
 
@@ -79,7 +85,8 @@ shlib		= lib$(NAME)$(DLSUFFIX).$(SO_MAJOR_VERSION).$(SO_MINOR_VERSION)
 shlib_major	= lib$(NAME)$(DLSUFFIX).$(SO_MAJOR_VERSION)
 shlib_bare	= lib$(NAME)$(DLSUFFIX)
 # Testing the soname variable is a reliable way to determine whether a
-# linkable library is being built.
+# linkable library is being built. shlib_major and shlib_bare are valid only
+# iff soname is set.
 soname		= $(shlib_major)
 pkgconfigdir = $(libdir)/pkgconfig
 else
@@ -90,7 +97,9 @@ stlib		= lib$(NAME).a
 
 ifndef soname
 # additional flags for backend modules
+ifdef BE_DLLLIBS
 SHLIB_LINK += $(BE_DLLLIBS)
+endif
 endif
 
 # For each platform we support shared libraries on, set shlib to the
@@ -520,7 +529,10 @@ endif # no soname
 
 .PHONY: clean-lib
 clean-lib:
-	rm -f $(shlib) $(shlib_bare) $(shlib_major) $(stlib) $(exports_file) lib$(NAME).pc
+	rm -f $(shlib) $(stlib) $(exports_file) lib$(NAME).pc
+ifdef soname
+	rm -f $(shlib_bare) $(shlib_major)
+endif
 
 ifneq (,$(SHLIB_EXPORTS))
 maintainer-clean-lib:
