@@ -1416,6 +1416,27 @@ cd build_dir
 make -f /path/to/extension/source/tree/Makefile
 make -f /path/to/extension/source/tree/Makefile install
 </programlisting>
+    PGXS will set up <literal>vpath</literal> directives to find common file types
+    for you automatically.
+    If your extension requires additional files to be found from its source tree
+    it may add additional <literal>vpath</literal> directives <emphasis>after</emphasis>
+    including the pgxs makefile, e.g. to template the extension control file
+    during the build the Makefile could:
+<programlisting>
+# ... setup pgxs variables here ...
+include $(PGXS)
+
+vpath %.control.in $(srcdir)/
+
+myextension.control: myextension.control.in
+    sed 's/foo/bar/g' &lt; $&lt; &gt; $@
+</programlisting>
+    Note the use of the special Make variables <literal>$&lt;</literal> for "first
+    dependency in list" as the input and <literal>$@</literal> for "target filename"
+    as the output. Using <literal>$&lt;</literal> is important because it's expanded
+    into the dependency path found on the <literal>vpath</literal>. Using vpath
+    directives is especially useful when there are many input files of a given type.
+    See the GNU Make documentation on path searching for more information.
    </para>
 
    <para>

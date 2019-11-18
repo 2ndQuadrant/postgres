@@ -419,15 +419,16 @@ ifdef REGRESS
 
 REGRESS_OPTS += --dbname=$(CONTRIB_TESTDB)
 
-# When doing a VPATH build, must copy over the data files so that the
+# When the build directory and source directory are not co-located as
+# in a VPATH build, must copy/link over the data files so that the
 # driver script can find them.  We have to use an absolute path for
 # the targets, because otherwise make will try to locate the missing
-# files using VPATH, and will find them in $(srcdir), but the point
-# here is that we want to copy them from $(srcdir) to the build
+# files using the vpath, and will find them in $(srcdir) if it's set,
+# but the point here is that we want to copy them from $(srcdir) to the build
 # directory.
 
-ifdef VPATH
-abs_builddir := $(shell pwd)
+ifneq ($(srcdir),$(CURDIR))
+abs_builddir := $(CURDIR)
 test_files_src := $(wildcard $(srcdir)/data/*.data)
 test_files_build := $(patsubst $(srcdir)/%, $(abs_builddir)/%, $(test_files_src))
 
@@ -435,7 +436,7 @@ all: $(test_files_build)
 $(test_files_build): $(abs_builddir)/%: $(srcdir)/%
 	$(MKDIR_P) $(dir $@)
 	ln -s $< $@
-endif # VPATH
+endif # srcdir != top_builddir
 
 .PHONY: submake
 submake:
@@ -478,3 +479,17 @@ ifdef PROGRAM
 $(PROGRAM): $(OBJS)
 	$(CC) $(CFLAGS) $(OBJS) $(PG_LIBS_INTERNAL) $(LDFLAGS) $(LDFLAGS_EX) $(PG_LIBS) $(LIBS) -o $@$(X)
 endif
+
+ifneq ($(srcdir),$(CURDIR))
+#
+# Support for building outside the extension source tree without
+# needing full VPATH.
+#
+# Extension Makefiles will need to add their own vpath directives for inputs to
+# SCRIPTS_built, HEADERS_built, etc, or qualify their inputs with $(srcdir). But
+# we know we'll always want to find C sources listed in OBJS in the extension
+# source dir.
+#
+vpath %.c $(srcdir)/
+
+endif # srcdir != CURDIR
